@@ -51,12 +51,12 @@
             margin-right: 8px;
             font-weight: bold;
         }
-        .warning-badge {
-            background-color: #ff9900;
-            color: #fff;
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-size: 0.75rem;
+        
+        /* 右上角真實手機時間 */
+        #live-clock {
+            font-size: 1.1rem;
+            font-weight: bold;
+            color: #222;
         }
 
         /* 標題欄 */
@@ -66,13 +66,6 @@
             justify-content: center;
             height: 50px;
             border-bottom: 1px solid #eee;
-            position: relative;
-        }
-        .back-btn {
-            position: absolute;
-            left: 15px;
-            font-size: 1.5rem;
-            color: var(--text-gray);
         }
         .header-title {
             font-size: 1.1rem;
@@ -97,7 +90,6 @@
             justify-content: center;
             align-items: center;
             gap: 8px;
-            outline: none;
         }
         .tab-btn.active {
             color: var(--text-dark);
@@ -189,19 +181,18 @@
 
     <div class="phone-container">
         
-        <!-- 🌦️ 天文台即時氣溫工具列 -->
+        <!-- 🌦️ 天氣與精準時間欄 -->
         <div class="weather-bar">
             <div class="weather-info">
                 <span id="wx-location">天水圍</span>
-                <span id="wx-temp">24°C</span>
-                <span id="wx-desc">部分時間有陽光</span>
-                <span id="wx-warning" class="warning-badge" style="display:none;">有警告</span>
+                <span id="wx-temp">--°C</span>
+                <span id="wx-desc">讀取天氣中...</span>
             </div>
-            <div id="wx-time" style="font-size: 0.8rem; color:#888;">--:--</div>
+            <!-- 🕒 精準校對：實時顯示當前手機時間 -->
+            <div id="live-clock">--:--</div>
         </div>
 
         <div class="header">
-            <div class="back-btn">←</div>
             <div class="header-title">天水圍快行 🚃</div>
         </div>
 
@@ -213,7 +204,7 @@
         <!-- ================= 🚇 輕鐵實時面板 ================= -->
         <div id="panel-lrt" class="tab-panel active">
             <div class="info-banner">
-                當前觀測站點：天水圍站 (750) <br>
+                當前觀測：天水圍站 (750) <br>
                 5號月台 · 往 705 循環綫 | 6號月台 · 往 706 循環綫/751友愛
             </div>
 
@@ -223,36 +214,41 @@
             </div>
 
             <div id="lrt-list" class="list-container">
-                <!-- 預先渲染載入中文本，防卡死 -->
-                <div class="loading-text">正在初始化輕鐵模組...</div>
+                <div class="loading-text">正在獲取港鐵輕鐵最新 Live 時間...</div>
             </div>
         </div>
 
         <!-- ================= 🚌 公共巴士實時面板 ================= -->
         <div id="panel-bus" class="tab-panel">
             <div class="info-banner" style="background-color: #e3f2fd; color: #0d47a1;">
-                當前選定：天水圍站轉車站 (天耀路/西鐵站旁)
+                當前觀測：天水圍西鐵站轉車站 (269M / 69M)
             </div>
             <div class="table-subheader" style="color: #0d47a1;">
                 <div>路線 &nbsp;&nbsp;&nbsp;&nbsp; 目的地</div>
                 <div class="right-sort">等候時間</div>
             </div>
             <div id="bus-list" class="list-container">
-                <div class="loading-text">正在初始化巴士模組...</div>
+                <div class="loading-text">正在讀取九巴實時數據...</div>
             </div>
         </div>
 
         <div class="footer-note">
             <div id="update-timer" style="margin-bottom: 5px; color: #666; font-weight: bold;">數據同步中...</div>
-            <span id="env-mode" style="color:#2b8a3e; font-size:0.75rem; font-weight:bold;">模式：偵測中</span><br>
-            *備註：網頁每 12 秒全自動倒數刷新。如身處本地測試環境將顯示模擬動態。
+            *備註：網頁每 10 秒全自動刷新。所有數據直接來自香港政府資料一線通。
         </div>
     </div>
 
     <script>
-        // 精準偵測當前運行環境是否為本地 file 協議
-        const isLocalFile = window.location.protocol === 'file:';
+        // 🕒 1. 右上角絕對精準的本地時鐘 (每秒更新，絕不卡死)
+        function updateClock() {
+            const now = new Date();
+            document.getElementById('live-clock').innerText = 
+                `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+        }
+        setInterval(updateClock, 1000);
+        updateClock();
 
+        // 標籤頁切換
         function switchTab(type) {
             document.getElementById('btn-bus').classList.remove('active');
             document.getElementById('btn-lrt').classList.remove('active');
@@ -268,17 +264,10 @@
             }
         }
 
-        // 1. 天氣數據處理
+        // 2. 🌦️ 串接天文台 API (獨立通道，不影響車務)
         async function fetchWeather() {
-            const now = new Date();
-            document.getElementById('wx-time').innerText = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
-            
-            if(isLocalFile) {
-                return; // 本地環境直接跳過聯網，保留高擬真預設天氣
-            }
-
             try {
-                const res = await fetch(`https://weather.gov.hk{now.getTime()}`);
+                const res = await fetch(`https://weather.gov.hk`);
                 const data = await res.json();
                 if(data.temperature && data.temperature.data) {
                     const tsw = data.temperature.data.find(s => s.place === '天水圍') || data.temperature.data[0];
@@ -286,18 +275,25 @@
                     document.getElementById('wx-location').innerText = tsw.place;
                 }
                 if(data.weatherDescription) {
-                    document.getElementById('wx-desc').innerText = data.weatherDescription.replace(/<\/?[^>]+(>|$)/g, "").substring(0, 10);
+                    document.getElementById('wx-desc').innerText = data.weatherDescription.replace(/<\/?[^>]+(>|$)/g, "").substring(0, 10) + "...";
                 }
-            } catch (e) { console.error("天氣獲取失敗", e); }
+            } catch (e) { 
+                document.getElementById('wx-desc').innerText = "天文台連線中"; 
+            }
         }
 
-        // 2. 輕鐵數據處理
+        // 3. 🚇 直連港鐵輕鐵 API (100% 重現第一版核心邏輯，絕無代理阻擋問題)
         async function fetchLrtData() {
             const container = document.getElementById('lrt-list');
-            
-            // 本地電腦直接點開的備用模擬數據，確保 100% 跑出排版
-            if(isLocalFile) {
-                document.getElementById('env-mode').innerText = "運行模式：本地安全模擬器";
-                container.innerHTML = `
-                    <div class="platform-header">5號月台</div>
-                    <div class="list-item">
+            try {
+                // 直接呼叫官方 API，避免任何第三方 Proxy 中轉
+                const res = await fetch(`https://data.gov.hk`);
+                const data = await res.json();
+                
+                if (data.status === 1 && data.platform_list && data.platform_list.length > 0) {
+                    let html = '';
+                    data.platform_list.forEach(plat => {
+                        html += `<div class="platform-header">${plat.platform_id}號月台</div>`;
+                        if(plat.route_list && plat.route_list.length > 0) {
+                            plat.route_list.forEach(train => {
+                                let carIcon = train.train_length === 2 ? '<span class="car">🚃</span><span class="car double">🚃</span>' : '<span class="car">🚃</span>';
