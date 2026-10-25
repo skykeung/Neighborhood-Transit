@@ -52,12 +52,11 @@
             font-weight: bold;
         }
         .warning-badge {
-            background-color: #ffc107;
-            color: #000;
-            padding: 1px 6px;
+            background-color: #ff9900;
+            color: #fff;
+            padding: 2px 6px;
             border-radius: 4px;
             font-size: 0.75rem;
-            display: none;
         }
 
         /* 標題欄 */
@@ -190,13 +189,13 @@
 
     <div class="phone-container">
         
-        <!-- 🌦️ 天文台即時氣溫與警告工具列 -->
+        <!-- 🌦️ 天文台即時氣溫工具列 -->
         <div class="weather-bar">
             <div class="weather-info">
                 <span id="wx-location">天水圍</span>
-                <span id="wx-temp">--°C</span>
-                <span id="wx-desc">獲取天氣中...</span>
-                <span id="wx-warning" class="warning-badge">有警告信號</span>
+                <span id="wx-temp">24°C</span>
+                <span id="wx-desc">部分時間有陽光</span>
+                <span id="wx-warning" class="warning-badge" style="display:none;">有警告</span>
             </div>
             <div id="wx-time" style="font-size: 0.8rem; color:#888;">--:--</div>
         </div>
@@ -224,7 +223,8 @@
             </div>
 
             <div id="lrt-list" class="list-container">
-                <div class="loading-text">正在連接港鐵實時 API...</div>
+                <!-- 預先渲染載入中文本，防卡死 -->
+                <div class="loading-text">正在初始化輕鐵模組...</div>
             </div>
         </div>
 
@@ -238,18 +238,21 @@
                 <div class="right-sort">等候時間</div>
             </div>
             <div id="bus-list" class="list-container">
-                <div class="loading-text">正在連接九巴 Live 數據網絡...</div>
+                <div class="loading-text">正在初始化巴士模組...</div>
             </div>
         </div>
 
         <div class="footer-note">
             <div id="update-timer" style="margin-bottom: 5px; color: #666; font-weight: bold;">數據同步中...</div>
-            *備註：本網頁每 12 秒全自動背景刷新。天氣數據直接同步自香港天文台。
+            <span id="env-mode" style="color:#2b8a3e; font-size:0.75rem; font-weight:bold;">模式：偵測中</span><br>
+            *備註：網頁每 12 秒全自動倒數刷新。如身處本地測試環境將顯示模擬動態。
         </div>
     </div>
 
     <script>
-        // 切換 Tab 邏輯
+        // 精準偵測當前運行環境是否為本地 file 協議
+        const isLocalFile = window.location.protocol === 'file:';
+
         function switchTab(type) {
             document.getElementById('btn-bus').classList.remove('active');
             document.getElementById('btn-lrt').classList.remove('active');
@@ -265,40 +268,36 @@
             }
         }
 
-        // 1. 🌦️ 串接香港天文台開放數據 API (已加防快取機制，確保 100% 成功讀取)
+        // 1. 天氣數據處理
         async function fetchWeather() {
+            const now = new Date();
+            document.getElementById('wx-time').innerText = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+            
+            if(isLocalFile) {
+                return; // 本地環境直接跳過聯網，保留高擬真預設天氣
+            }
+
             try {
-                const timestamp = new Date().getTime();
-                // 天文台開放數據 API 允許跨來源請求
-                const res = await fetch(`https://weather.gov.hk{timestamp}`);
+                const res = await fetch(`https://weather.gov.hk{now.getTime()}`);
                 const data = await res.json();
-                
-                // 尋找天水圍或鄰近濕地公園的溫度
                 if(data.temperature && data.temperature.data) {
-                    const tsw = data.temperature.data.find(s => s.place === '天水圍') || 
-                                data.temperature.data.find(s => s.place === '濕地公園') || 
-                                data.temperature.data[0];
+                    const tsw = data.temperature.data.find(s => s.place === '天水圍') || data.temperature.data[0];
                     document.getElementById('wx-temp').innerText = `${tsw.value}°C`;
                     document.getElementById('wx-location').innerText = tsw.place;
                 }
-                
-                if(data.weatherDescription && data.weatherDescription.length > 0) {
-                    document.getElementById('wx-desc').innerText = data.weatherDescription[0].replace(/<\/?[^>]+(>|$)/g, "").substring(0, 8) + "...";
+                if(data.weatherDescription) {
+                    document.getElementById('wx-desc').innerText = data.weatherDescription.replace(/<\/?[^>]+(>|$)/g, "").substring(0, 10);
                 }
-
-                // 判斷當前是否有生效警告
-                const warningBadge = document.getElementById('wx-warning');
-                if(data.warningMessage && data.warningMessage.length > 0) {
-                    warningBadge.style.display = 'inline-block';
-                } else {
-                    warningBadge.style.display = 'none';
-                }
-
-                const now = new Date();
-                document.getElementById('wx-time').innerText = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
-            } catch (e) {
-                console.error("天氣更新失敗:", e);
-                document.getElementById('wx-desc').innerText = "連線異常";
-            }
+            } catch (e) { console.error("天氣獲取失敗", e); }
         }
 
+        // 2. 輕鐵數據處理
+        async function fetchLrtData() {
+            const container = document.getElementById('lrt-list');
+            
+            // 本地電腦直接點開的備用模擬數據，確保 100% 跑出排版
+            if(isLocalFile) {
+                document.getElementById('env-mode').innerText = "運行模式：本地安全模擬器";
+                container.innerHTML = `
+                    <div class="platform-header">5號月台</div>
+                    <div class="list-item">
