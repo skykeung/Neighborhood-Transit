@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>交通資訊 - 實時動態</title>
+    <style>
+        :root {
+            --mtr-orange: #ff9900;
+            --lrt-bg: #e6f7f7;
+            --lrt-text: #00a0a0;
+            --text-dark: #333;
+            --text-gray: #666;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #ffffff;
+            color: var(--text-dark);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .phone-container {
+            width: 100%;
+            max-width: 450px;
+            min-height: 100vh;
+            box-shadow: 0 0 20px rgba(0,0,0,0.05);
+            display: flex;
+            flex-direction: column;
+            background: #fff;
+            position: relative;
+        }
+
+        /* 頂部天氣列 */
+        .weather-bar {
+            background-color: #f1f3f5;
+            padding: 10px 16px;
+            font-size: 0.9rem;
+            color: #495057;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #e9ecef;
+        }
+        .weather-info span {
+            margin-right: 8px;
+            font-weight: bold;
+        }
+
+        /* 標題欄 */
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 50px;
+            border-bottom: 1px solid #eee;
+            position: relative;
+        }
+        .back-btn {
+            position: absolute;
+            left: 15px;
+            font-size: 1.5rem;
+            color: var(--text-gray);
+            cursor: pointer;
+        }
+        .header-title {
+            font-size: 1.1rem;
+            font-weight: 500;
+        }
+
+        /* 頂部功能導航標籤 */
+        .nav-tabs {
+            display: flex;
+            border-bottom: 1px solid #eee;
+        }
+        .tab-btn {
+            flex: 1;
+            text-align: center;
+            padding: 14px 0;
+            font-size: 1rem;
+            color: var(--text-gray);
+            cursor: pointer;
+            border: none;
+            background: none;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+            outline: none;
+        }
+        .tab-btn.active {
+            color: var(--text-dark);
+            font-weight: bold;
+            border-bottom: 3px solid var(--lrt-text);
+        }
+
+        /* 橘黃色方向提示框 */
+        .info-banner {
+            background-color: #ffcc66;
+            padding: 12px 16px;
+            font-size: 0.95rem;
+            color: #5d4037;
+            line-height: 1.5;
+        }
+
+        /* 表頭 */
+        .table-subheader {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 16px;
+            font-size: 0.9rem;
+            color: var(--lrt-text);
+            border-bottom: 1px solid #f0f0f0;
+        }
+        .table-subheader .right-sort {
+            color: var(--lrt-text);
+        }
+
+        /* 月台分組標題 */
+        .platform-header {
+            background-color: var(--lrt-bg);
+            color: var(--lrt-text);
+            padding: 10px 16px;
+            font-weight: bold;
+            font-size: 1.05rem;
+        }
+
+        /* 實時班次列表 */
+        .list-container {
+            flex: 1;
+        }
+        .list-item {
+            display: flex;
+            align-items: center;
+            padding: 14px 16px;
+            border-bottom: 1px solid #f5f5f5;
+        }
+        .route-no {
+            font-size: 1.2rem;
+            font-weight: bold;
+            width: 60px;
+        }
+        .dest-name {
+            font-size: 1.1rem;
+            flex: 1;
+            color: #222;
+        }
+        
+        /* 輕鐵車卡圖示樣式 */
+        .train-visual {
+            display: flex;
+            align-items: center;
+            margin-right: 15px;
+        }
+        .car {
+            font-size: 1.3rem;
+            line-height: 1;
+        }
+        .car.double {
+            margin-left: -6px; /* 讓雙卡連接在一起 */
+        }
+
+        /* 等候時間狀態 */
+        .eta-status {
+            font-size: 1.05rem;
+            font-weight: bold;
+            text-align: right;
+            width: 85px;
+        }
+        .eta-status.arriving {
+            color: #00bfa5; /* 即將抵達的翡翠綠 */
+        }
+        .eta-status.minutes {
+            color: #00bfa5;
+        }
+        .eta-status.minutes span {
+            font-size: 1.3rem;
+            margin-right: 2px;
+        }
+
+        /* 頁腳備註 */
+        .footer-note {
+            padding: 20px 16px;
+            font-size: 0.8rem;
+            color: #999;
+            line-height: 1.4;
+            background-color: #fafafa;
+            border-top: 1px solid #f0f0f0;
+        }
+
+        /* 隱藏未選中的面板 */
+        .tab-panel {
+            display: none;
+        }
+        .tab-panel.active {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="phone-container">
+        
+        <!-- 🌦️ 天文台天氣資訊欄 (會經由 JS 動態填入最新數據) -->
+        <div class="weather-bar">
+            <div class="weather-info">
+                <span id="wx-location">香港</span>
+                <span id="wx-temp">--°C</span>
+                <span id="wx-desc">獲取天氣中...</span>
+            </div>
+            <div id="wx-time" style="font-size: 0.8rem; color:#888;">--:--</div>
+        </div>
+
+        <!-- 頂部導航 header -->
+        <div class="header">
+            <div class="back-btn">←</div>
+            <div class="header-title">交通資訊</div>
+        </div>
+
+        <!-- 🚌 / 🚇 分頁切換鈕 -->
+        <div class="nav-tabs">
+            <button class="tab-btn" onclick="switchTab('bus')">🚌 公共巴士</button>
+            <button class="tab-btn active" onclick="switchTab('lrt')">🚇 輕鐵</button>
+        </div>
+
+        <!-- ================= 🚇 輕鐵分頁面板 ================= -->
+        <div id="panel-lrt" class="tab-panel active">
+            <!-- 頂部提示條 -->
+            <div class="info-banner">
+                6號月台 · 往天水圍港鐵站方向<br>
+                4號月台 · 往天逸方向
+            </div>
+
+            <div class="table-subheader">
+                <div>路線 &nbsp;&nbsp;&nbsp;&nbsp; 目的地</div>
+                <div class="right-sort">等候時間</div>
+            </div>
+
+            <div class="list-container">
+                <!-- 4號月台組別 -->
+                <div class="platform-header">4號月台</div>
+                
+                <div class="list-item">
+                    <div class="route-no" style="color: #d32f2f;">705</div>
+                    <div class="dest-name">天水圍循環綫</div>
+                    <div class="train-visual">
+                        <span class="car">🚃</span><span class="car double">🚃</span>
+                    </div>
+                    <div class="eta-status arriving">即將抵達</div>
+                </div>
+
+                <div class="list-item">
+                    <div class="route-no" style="color: #7b1fa2;">751</div>
+                    <div class="dest-name">天逸</div>
+                    <div class="train-visual">
+                        <span class="car">🚃</span>
+                    </div>
+                    <div class="eta-status minutes"><span>4</span>分鐘</div>
+                </div>
+
+                <div class="list-item">
+                    <div class="route-no" style="color: #d32f2f;">705</div>
+                    <div class="dest-name">天水圍循環綫</div>
+                    <div class="train-visual">
+                        <span class="car">🚃</span>
+                    </div>
+                    <div class="eta-status minutes"><span>10</span>分鐘</div>
+                </div>
+
+                <div class="list-item">
+                    <div class="route-no" style="color: #7b1fa2;">751</div>
+                    <div class="dest-name">天逸</div>
+                    <div class="train-visual">
+                        <span class="car">🚃</span><span class="car double">🚃</span>
+                    </div>
+                    <div class="eta-status minutes"><span>19</span>分鐘</div>
+                </div>
+
+                <!-- 6號月台組別 -->
+                <div class="platform-header">6號月台</div>
+
+                <div class="list-item">
+                    <div class="route-no" style="color: #388e3c;">706</div>
+                    <div class="dest-name">天水圍循環綫</div>
+                    <div class="train-visual">
+                        <span class="car">🚃</span>
+                    </div>
+                    <div class="eta-status minutes"><span>7</span>分鐘</div>
+                </div>
+
+                <div class="list-item">
+                    <div class="route-no" style="color: #7b1fa2;">751</div>
+                    <div class="dest-name">友愛</div>
+                    <div class="train-visual">
+                        <span class="car">🚃</span>
+                    </div>
+                    <div class="eta-status minutes"><span>11</span>分鐘</div>
+                </div>
+
+                <div class="list-item">
+                    <div class="route-no" style="color: #388e3c;">706</div>
+                    <div class="dest-name">天水圍循環綫</div>
+                    <div class="train-visual">
+                        <span class="car">🚃</span><span class="car double">🚃</span>
+                    </div>
+                    <div class="eta-status minutes"><span>17</span>分鐘</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================= 🚌 公共巴士分頁面板 ================= -->
+        <div id="panel-bus" class="tab-panel">
+            <div class="info-banner" style="background-color: #e3f2fd; color: #0d47a1;">
+                天耀邨 / 天水圍站附近巴士站
+            </div>
+            <div class="table-subheader">
+                <div>路線 &nbsp;&nbsp;&nbsp;&nbsp; 目的地</div>
+                <div class="right-sort">等候時間</div>
+            </div>
