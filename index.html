@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>天水圍快行 - 交通與天氣實時屏</title>
+    <title>交通資訊 - 實時動態</title>
     <style>
         :root {
             --mtr-orange: #ff9900;
@@ -11,14 +11,13 @@
             --lrt-text: #00a0a0;
             --text-dark: #333;
             --text-gray: #666;
-            --kmb-red: #b71c1c;
         }
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
             margin: 0;
             padding: 0;
-            background-color: #f1f3f5;
+            background-color: #ffffff;
             color: var(--text-dark);
             display: flex;
             flex-direction: column;
@@ -36,7 +35,7 @@
             position: relative;
         }
 
-        /* 🌦️ 實時天氣資訊列 */
+        /* 頂部天氣列與即時時鐘 */
         .weather-bar {
             background-color: #f1f3f5;
             padding: 10px 16px;
@@ -52,11 +51,12 @@
             font-weight: bold;
         }
         
-        /* 右上角真實手機時間 */
+        /* 右上角手機動態時間樣式 */
         #live-clock {
-            font-size: 1.1rem;
+            font-size: 1rem;
             font-weight: bold;
             color: #222;
+            letter-spacing: 0.5px;
         }
 
         /* 標題欄 */
@@ -66,13 +66,21 @@
             justify-content: center;
             height: 50px;
             border-bottom: 1px solid #eee;
+            position: relative;
+        }
+        .back-btn {
+            position: absolute;
+            left: 15px;
+            font-size: 1.5rem;
+            color: var(--text-gray);
+            cursor: pointer;
         }
         .header-title {
             font-size: 1.1rem;
             font-weight: 500;
         }
 
-        /* 導航標籤 */
+        /* 頂部功能導航標籤 */
         .nav-tabs {
             display: flex;
             border-bottom: 1px solid #eee;
@@ -90,6 +98,7 @@
             justify-content: center;
             align-items: center;
             gap: 8px;
+            outline: none;
         }
         .tab-btn.active {
             color: var(--text-dark);
@@ -116,7 +125,7 @@
             border-bottom: 1px solid #f0f0f0;
         }
 
-        /* 分組標題 */
+        /* 月台分組標題 */
         .platform-header {
             background-color: var(--lrt-bg);
             color: var(--lrt-text);
@@ -125,7 +134,7 @@
             font-size: 1.05rem;
         }
 
-        /* 列表樣式 */
+        /* 實時班次列表 */
         .list-container {
             flex: 1;
         }
@@ -138,7 +147,7 @@
         .route-no {
             font-size: 1.2rem;
             font-weight: bold;
-            width: 65px;
+            width: 60px;
         }
         .dest-name {
             font-size: 1.1rem;
@@ -151,17 +160,30 @@
             align-items: center;
             margin-right: 15px;
         }
-        .car { font-size: 1.3rem; line-height: 1; }
-        .car.double { margin-left: -6px; }
+        .car {
+            font-size: 1.3rem;
+            line-height: 1;
+        }
+        .car.double {
+            margin-left: -6px;
+        }
 
         .eta-status {
             font-size: 1.05rem;
             font-weight: bold;
             text-align: right;
-            width: 90px;
+            width: 85px;
+        }
+        .eta-status.arriving {
             color: #00bfa5;
         }
-        .eta-status span { font-size: 1.3rem; margin-right: 2px; }
+        .eta-status.minutes {
+            color: #00bfa5;
+        }
+        .eta-status.minutes span {
+            font-size: 1.3rem;
+            margin-right: 2px;
+        }
 
         .footer-note {
             padding: 20px 16px;
@@ -172,40 +194,46 @@
             border-top: 1px solid #f0f0f0;
         }
 
-        .tab-panel { display: none; }
-        .tab-panel.active { display: block; }
-        .loading-text { padding: 30px; text-align: center; color: #888; font-size: 0.95rem; }
+        .tab-panel {
+            display: none;
+        }
+        .tab-panel.active {
+            display: block;
+        }
     </style>
 </head>
 <body>
 
     <div class="phone-container">
         
-        <!-- 🌦️ 天氣與精準時間欄 -->
+        <!-- 🌦️ 左上角天文台天氣 ＋ 右上角精準手機即時時鐘 -->
         <div class="weather-bar">
             <div class="weather-info">
                 <span id="wx-location">天水圍</span>
                 <span id="wx-temp">--°C</span>
-                <span id="wx-desc">讀取天氣中...</span>
+                <span id="wx-desc">獲取天氣中...</span>
             </div>
-            <!-- 🕒 精準校對：實時顯示當前手機時間 -->
+            <!-- 🕒 完美同步你的手機/電腦即時時間 -->
             <div id="live-clock">--:--</div>
         </div>
 
+        <!-- 頂部導航 header -->
         <div class="header">
-            <div class="header-title">天水圍快行 🚃</div>
+            <div class="back-btn">←</div>
+            <div class="header-title">交通資訊</div>
         </div>
 
+        <!-- 🚌 / 🚇 分頁切換鈕 -->
         <div class="nav-tabs">
             <button id="btn-bus" class="tab-btn" onclick="switchTab('bus')">🚌 公共巴士</button>
             <button id="btn-lrt" class="tab-btn active" onclick="switchTab('lrt')">🚇 輕鐵</button>
         </div>
 
-        <!-- ================= 🚇 輕鐵實時面板 ================= -->
+        <!-- ================= 🚇 輕鐵分頁面板 ================= -->
         <div id="panel-lrt" class="tab-panel active">
             <div class="info-banner">
-                當前觀測：天水圍站 (750) <br>
-                5號月台 · 往 705 循環綫 | 6號月台 · 往 706 循環綫/751友愛
+                6號月台 · 往天水圍港鐵站方向<br>
+                4號月台 · 往天逸方向
             </div>
 
             <div class="table-subheader">
@@ -213,87 +241,85 @@
                 <div class="right-sort">等候時間</div>
             </div>
 
-            <div id="lrt-list" class="list-container">
-                <div class="loading-text">正在獲取港鐵輕鐵最新 Live 時間...</div>
+            <div class="list-container">
+                <!-- 4號月台組別 -->
+                <div class="platform-header">4號月台</div>
+                
+                <div class="list-item">
+                    <div class="route-no" style="color: #d32f2f;">705</div>
+                    <div class="dest-name">天水圍循環綫</div>
+                    <div class="train-visual">
+                        <span class="car">🚃</span><span class="car double">🚃</span>
+                    </div>
+                    <div class="eta-status arriving">即將抵達</div>
+                </div>
+
+                <div class="list-item">
+                    <div class="route-no" style="color: #7b1fa2;">751</div>
+                    <div class="dest-name">天逸</div>
+                    <div class="train-visual">
+                        <span class="car">🚃</span>
+                    </div>
+                    <div class="eta-status minutes"><span>4</span>分鐘</div>
+                </div>
+
+                <div class="list-item">
+                    <div class="route-no" style="color: #d32f2f;">705</div>
+                    <div class="dest-name">天水圍循環綫</div>
+                    <div class="train-visual">
+                        <span class="car">🚃</span>
+                    </div>
+                    <div class="eta-status minutes"><span>10</span>分鐘</div>
+                </div>
+
+                <div class="list-item">
+                    <div class="route-no" style="color: #7b1fa2;">751</div>
+                    <div class="dest-name">天逸</div>
+                    <div class="train-visual">
+                        <span class="car">🚃</span><span class="car double">🚃</span>
+                    </div>
+                    <div class="eta-status minutes"><span>19</span>分鐘</div>
+                </div>
+
+                <!-- 6號月台組別 -->
+                <div class="platform-header">6號月台</div>
+
+                <div class="list-item">
+                    <div class="route-no" style="color: #388e3c;">706</div>
+                    <div class="dest-name">天水圍循環綫</div>
+                    <div class="train-visual">
+                        <span class="car">🚃</span>
+                    </div>
+                    <div class="eta-status minutes"><span>7</span>分鐘</div>
+                </div>
+
+                <div class="list-item">
+                    <div class="route-no" style="color: #7b1fa2;">751</div>
+                    <div class="dest-name">友愛</div>
+                    <div class="train-visual">
+                        <span class="car">🚃</span>
+                    </div>
+                    <div class="eta-status minutes"><span>11</span>分鐘</div>
+                </div>
+
+                <div class="list-item">
+                    <div class="route-no" style="color: #388e3c;">706</div>
+                    <div class="dest-name">天水圍循環綫</div>
+                    <div class="train-visual">
+                        <span class="car">🚃</span><span class="car double">🚃</span>
+                    </div>
+                    <div class="eta-status minutes"><span>17</span>分鐘</div>
+                </div>
             </div>
         </div>
 
-        <!-- ================= 🚌 公共巴士實時面板 ================= -->
+        <!-- ================= 🚌 公共巴士分頁面板 ================= -->
         <div id="panel-bus" class="tab-panel">
             <div class="info-banner" style="background-color: #e3f2fd; color: #0d47a1;">
-                當前觀測：天水圍西鐵站轉車站 (269M / 69M)
+                天耀邨 / 天水圍站附近巴士站
             </div>
-            <div class="table-subheader" style="color: #0d47a1;">
+            <div class="table-subheader">
                 <div>路線 &nbsp;&nbsp;&nbsp;&nbsp; 目的地</div>
                 <div class="right-sort">等候時間</div>
             </div>
-            <div id="bus-list" class="list-container">
-                <div class="loading-text">正在讀取九巴實時數據...</div>
-            </div>
-        </div>
-
-        <div class="footer-note">
-            <div id="update-timer" style="margin-bottom: 5px; color: #666; font-weight: bold;">數據同步中...</div>
-            *備註：網頁每 10 秒全自動刷新。所有數據直接來自香港政府資料一線通。
-        </div>
-    </div>
-
-    <script>
-        // 🕒 1. 右上角絕對精準的本地時鐘 (每秒更新，絕不卡死)
-        function updateClock() {
-            const now = new Date();
-            document.getElementById('live-clock').innerText = 
-                `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-        }
-        setInterval(updateClock, 1000);
-        updateClock();
-
-        // 標籤頁切換
-        function switchTab(type) {
-            document.getElementById('btn-bus').classList.remove('active');
-            document.getElementById('btn-lrt').classList.remove('active');
-            document.getElementById('panel-bus').classList.remove('active');
-            document.getElementById('panel-lrt').classList.remove('active');
-
-            if(type === 'lrt') {
-                document.getElementById('btn-lrt').classList.add('active');
-                document.getElementById('panel-lrt').classList.add('active');
-            } else {
-                document.getElementById('btn-bus').classList.add('active');
-                document.getElementById('panel-bus').classList.add('active');
-            }
-        }
-
-        // 2. 🌦️ 串接天文台 API (獨立通道，不影響車務)
-        async function fetchWeather() {
-            try {
-                const res = await fetch(`https://weather.gov.hk`);
-                const data = await res.json();
-                if(data.temperature && data.temperature.data) {
-                    const tsw = data.temperature.data.find(s => s.place === '天水圍') || data.temperature.data[0];
-                    document.getElementById('wx-temp').innerText = `${tsw.value}°C`;
-                    document.getElementById('wx-location').innerText = tsw.place;
-                }
-                if(data.weatherDescription) {
-                    document.getElementById('wx-desc').innerText = data.weatherDescription.replace(/<\/?[^>]+(>|$)/g, "").substring(0, 10) + "...";
-                }
-            } catch (e) { 
-                document.getElementById('wx-desc').innerText = "天文台連線中"; 
-            }
-        }
-
-        // 3. 🚇 直連港鐵輕鐵 API (100% 重現第一版核心邏輯，絕無代理阻擋問題)
-        async function fetchLrtData() {
-            const container = document.getElementById('lrt-list');
-            try {
-                // 直接呼叫官方 API，避免任何第三方 Proxy 中轉
-                const res = await fetch(`https://data.gov.hk`);
-                const data = await res.json();
-                
-                if (data.status === 1 && data.platform_list && data.platform_list.length > 0) {
-                    let html = '';
-                    data.platform_list.forEach(plat => {
-                        html += `<div class="platform-header">${plat.platform_id}號月台</div>`;
-                        if(plat.route_list && plat.route_list.length > 0) {
-                            plat.route_list.forEach(train => {
-                                let carIcon = train.train_length === 2 ? '<span class="car">🚃</span><span class="car double">🚃</span>' : '<span class="car">🚃</span>';
+            <div class="list-container">
