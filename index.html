@@ -65,13 +65,6 @@
             border-bottom: 1px solid #eee;
             position: relative;
         }
-        .back-btn {
-            position: absolute;
-            left: 15px;
-            font-size: 1.5rem;
-            color: var(--text-gray);
-            cursor: pointer;
-        }
         .header-title {
             font-size: 1.1rem;
             font-weight: 500;
@@ -261,8 +254,6 @@
         .loading-note { padding: 24px 16px; color: #999; font-size: 0.9rem; text-align: center; }
         /* 巴士月台分組標題（重用輕鐵樣式，改橙色系） */
         .bus-platform { background-color: #fff4e5; color: #e65100; }
-        /* 巴士資料更新時間 */
-        .bus-updated-time { font-size: 0.72rem; font-weight: normal; color: #795548; margin-top: 4px; }
         /* 箭頭旁的下一班分鐘數 */
         .bus-eta-badge {
             font-size: 1.05rem;
@@ -331,7 +322,6 @@
             </div>
         </div>
         <div class="header">
-            <div class="back-btn">←</div>
             <div class="header-title">交通資訊</div>
         </div>
         <!-- 🚌 / 🚇 分頁切換鈕 -->
@@ -342,17 +332,14 @@
 
         <!-- ================= 🚌 公共巴士分頁面板 ================= -->
         <div id="panel-bus" class="tab-panel active">
+            <!-- 備註提示條（與輕鐵同款一行式） -->
+            <div class="info-banner" id="bus-banner">🚌 天水圍市中心 · 班次載入中...</div>
             <!-- 搜尋輸入框 -->
             <div class="search-container">
                 <div class="search-box">
                     <span>🔍</span>
                     <input type="text" id="bus-search" placeholder="搜尋路線">
                 </div>
-            </div>
-            <!-- 橘黃色備註提示條 + 資料更新時間 -->
-            <div class="info-banner">
-                *備註：以下資料僅供參考，一切以交通營辦商提供之資訊為準。
-                <div id="bus-updated" class="bus-updated-time">資料更新中...</div>
             </div>
             <div class="table-subheader">
                 <div>路線 &nbsp;&nbsp;&nbsp;&nbsp; 目的地</div>
@@ -576,11 +563,12 @@
                 return `<div class="platform-header bus-platform">月台 ${s.name}</div>` + body;
             }).join('');
 
-            // 🕒 顯示資料更新時間（用伺服器同步時間）
-            const updEl = document.getElementById('bus-updated');
+            // 🕒 橫幅顯示資料更新時間（與輕鐵同款，用伺服器同步時間）
+            const updEl = document.getElementById('bus-banner');
             if (updEl) {
                 const t = new Date(Date.now() + serverTimeOffset);
-                updEl.innerText = `資料更新時間 ${String(t.getHours()).padStart(2,'0')}:${String(t.getMinutes()).padStart(2,'0')}:${String(t.getSeconds()).padStart(2,'0')}`;
+                const ts = `${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,'0')}-${String(t.getDate()).padStart(2,'0')} ${String(t.getHours()).padStart(2,'0')}:${String(t.getMinutes()).padStart(2,'0')}:${String(t.getSeconds()).padStart(2,'0')}`;
+                updEl.innerText = `🚌 天水圍市中心 · 資料更新時間 ${ts}`;
             }
 
             // 渲染後重新套用搜尋過濾
