@@ -350,8 +350,8 @@
                 <div class="loading-note">🚌 班次資料載入中...</div>
             </div>
             
-            <!-- 🚌 嶼巴 B2P 專區 -->
-            <div class="info-banner" style="background-color:#e3f2fd;color:#1565c0;margin-top:16px;">🚌 嶼巴 B2P · 往深圳灣口岸</div>
+            <!-- 🚌 嶼巴 B2P 專區（天水圍市中心） -->
+            <div class="info-banner" style="background-color:#e3f2fd;color:#1565c0;margin-top:16px;">🚌 嶼巴 B2P · 往深圳灣口岸（天水圍市中心）</div>
             <div class="list-container" id="b2p-list" style="margin-bottom:16px;">
                 <div class="loading-note">🚌 B2P 班次資料載入中...</div>
             </div>
@@ -370,18 +370,6 @@
             </div>
         </div>
 
-        <!-- =================嶼巴 B2P 分頁面板 ================= -->
-        <div id="panel-b2p" class="tab-panel">
-            <div class="info-banner" id="b2p-banner">🚍 嶼巴天水圍站 · 班次載入中...</div>
-            <div class="table-subheader">
-                <div>路線 &nbsp;&nbsp;&nbsp;&nbsp; 目的地</div>
-                <div class="right-sort">等候時間</div>
-            </div>
-            <!-- 🚍 嶼巴 B2P 班次動態渲染 -->
-            <div class="list-container" id="b2p-list">
-                <div class="loading-note">🚍 班次資料載入中...</div>
-            </div>
-        </div>
 
         <div class="footer-note">
             *備註：以上資料僅供參考，一切以交通營辦商提供之資訊為準。
@@ -438,13 +426,9 @@
             document.getElementById('btn-lrt').classList.remove('active');
             document.getElementById('panel-bus').classList.remove('active');
             document.getElementById('panel-lrt').classList.remove('active');
-            document.getElementById('panel-b2p').classList.remove('active');
             if(type === 'lrt') {
                 document.getElementById('btn-lrt').classList.add('active');
                 document.getElementById('panel-lrt').classList.add('active');
-            } else if (type === 'b2p') {
-                document.getElementById('btn-b2p').classList.add('active');
-                document.getElementById('panel-b2p').classList.add('active');
             } else {
                 document.getElementById('btn-bus').classList.add('active');
                 document.getElementById('panel-bus').classList.add('active');
@@ -504,15 +488,10 @@
         // ============================================================
         // 🚌 嶼巴 B2P 真實 ETA（rt.data.gov.hk v2，已實測可用）
         // B2P 路線：天慈邨 ↔ 深圳灣口岸
-        // routeId: 34（往深圳灣），33（往天慈）
-        // 天水圍附近車站：天水圍公園 (167), 天瑞邨 (166), 天水圍警署 (171), 天慈邨 (162)
+        // routeId: 34（往深圳灣）
+        // 只顯示：天水圍市中心 (164)
         // ============================================================
-        const NLB_B2P_STOPS = [
-            { stopId: 167, name: '天水圍公園', routeId: 34 },
-            { stopId: 166, name: '天瑞邨', routeId: 34 },
-            { stopId: 171, name: '天水圍警署', routeId: 34 },
-            { stopId: 162, name: '天慈邨', routeId: 34 }
-        ];
+        const NLB_B2P_STOP = { stopId: 164, name: '天水圍市中心', routeId: 34 };
 
         function formatEta(isoString) {
             const mins = Math.round((new Date(isoString) - Date.now()) / 60000);
@@ -686,69 +665,60 @@
 
         // ============================================================
         // 嶼巴 B2P 真實班次（rt.data.gov.hk v2，已實測可用，免 key）
-        // 天水圍站 station_id = 480
+        // 只顯示：天水圍公園站
         // ============================================================
         async function fetchNLBB2P() {
             try {
-                // 同時取所有 B2P 車站的 ETA
-                const results = await Promise.all(NLB_B2P_STOPS.map(async (s) => {
-                    try {
-                        const res = await fetch(`https://rt.data.gov.hk/v2/transport/nlb/stop.php?action=estimatedArrivals&routeId=${s.routeId}&stopId=${s.stopId}&language=zh`);
-                        const json = await res.json();
-                        const etas = (json.estimatedArrivals || [])
-                            .filter(e => e.estimatedArrivalTime)
-                            .sort((a, b) => new Date(a.estimatedArrivalTime) - new Date(b.estimatedArrivalTime))
-                            .slice(0, 3);
-                        return { ...s, etas, error: false };
-                    } catch (err) {
-                        console.error(`B2P 車站 ${s.name} 獲取失敗`, err);
-                        return { ...s, etas: [], error: true };
-                    }
-                }));
+                const res = await fetch(`https://rt.data.gov.hk/v2/transport/nlb/stop.php?action=estimatedArrivals&routeId=${NLB_B2P_STOP.routeId}&stopId=${NLB_B2P_STOP.stopId}&language=zh`);
+                const json = await res.json();
+                const etas = (json.estimatedArrivals || [])
+                    .filter(e => e.estimatedArrivalTime)
+                    .sort((a, b) => new Date(a.estimatedArrivalTime) - new Date(b.estimatedArrivalTime))
+                    .slice(0, 3);
 
-                // 渲染 B2P 資料
                 const b2pContainer = document.getElementById('b2p-list');
                 if (b2pContainer) {
-                    b2pContainer.innerHTML = results.map(s => {
-                        if (s.error) {
-                            return `<div class="bus-item"><div class="bus-status-row"><span class="info-icon">i</span> B2P 讀取失敗</div></div>`;
-                        }
-                        if (s.etas.length === 0) {
-                            return `<div class="bus-item"><div class="bus-status-row"><span class="info-icon">i</span> 暫時沒有預定班次</div></div>`;
-                        }
-                        const firstEta = s.etas[0];
-                        const etaTime = new Date(firstEta.estimatedArrivalTime);
-                        const mins = Math.round((etaTime - Date.now()) / 60000);
-                        const badge = mins <= 0 ? '即將抵達' : `${mins} 分鐘`;
-                        
-                        const expandHtml = s.etas.map((t, i) => {
-                            const d = new Date(t.estimatedArrivalTime);
-                            const clock = `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
-                            return `
-                            <div class="bus-expand-row">
-                                <span class="seq">${i + 1}.</span>
-                                <span class="time">${clock}</span>
-                                <span class="mins">${Math.round((d - Date.now()) / 60000) <= 0 ? '即將抵達' : `${Math.round((d - Date.now()) / 60000)} 分鐘`}</span>
-                            </div>`;
-                        }).join('');
+                    if (etas.length === 0) {
+                        b2pContainer.innerHTML = '<div class="bus-item"><div class="bus-status-row"><span class="info-icon">i</span> 暫時沒有預定班次</div></div>';
+                        return;
+                    }
 
+                    const firstEta = etas[0];
+                    const etaTime = new Date(firstEta.estimatedArrivalTime);
+                    const mins = Math.round((etaTime - Date.now()) / 60000);
+                    const badge = mins <= 0 ? '即將抵達' : `${mins} 分鐘`;
+                    
+                    const expandHtml = etas.map((t, i) => {
+                        const d = new Date(t.estimatedArrivalTime);
+                        const clock = `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
                         return `
-                        <div class="bus-item" data-route="B2P" onclick="this.classList.toggle('expanded')">
-                            <div class="bus-main-row">
-                                <div class="bus-route-no">B2P</div>
-                                <div class="bus-details">
-                                    <div class="bus-dest">往 深圳灣口岸 <span style="font-size:0.75rem;color:#888;">(嶼巴)</span></div>
-                                    <div class="bus-stop-name">${s.name}</div>
-                                </div>
-                                <div class="bus-eta-badge">${badge}</div>
-                                <div class="bus-arrow"><svg viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg></div>
-                            </div>
-                            <div class="bus-expand">${expandHtml}</div>
+                        <div class="bus-expand-row">
+                            <span class="seq">${i + 1}.</span>
+                            <span class="time">${clock}</span>
+                            <span class="mins">${Math.round((d - Date.now()) / 60000) <= 0 ? '即將抵達' : `${Math.round((d - Date.now()) / 60000)} 分鐘`}</span>
                         </div>`;
                     }).join('');
+
+                    b2pContainer.innerHTML = `
+                    <div class="bus-item" data-route="B2P" onclick="this.classList.toggle('expanded')">
+                        <div class="bus-main-row">
+                            <div class="bus-route-no">B2P</div>
+                            <div class="bus-details">
+                                <div class="bus-dest">往 深圳灣口岸 <span style="font-size:0.75rem;color:#888;">(嶼巴)</span></div>
+                                <div class="bus-stop-name">${NLB_B2P_STOP.name}</div>
+                            </div>
+                            <div class="bus-eta-badge">${badge}</div>
+                            <div class="bus-arrow"><svg viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg></div>
+                        </div>
+                        <div class="bus-expand">${expandHtml}</div>
+                    </div>`;
                 }
             } catch (err) {
                 console.error('B2P 獲取失敗', err);
+                const b2pContainer = document.getElementById('b2p-list');
+                if (b2pContainer) {
+                    b2pContainer.innerHTML = '<div class="bus-item"><div class="bus-status-row"><span class="info-icon">i</span> B2P 讀取失敗</div></div>';
+                }
             }
         }
 
