@@ -605,7 +605,7 @@
 
         async function fetchLrtSchedule() {
             try {
-                const res = await fetch('https://rt.data.gov.hk/v1/transport/mtr/lrt/getSchedule?station_id=480&language=TC');
+                const res = await fetch('https://rt.data.gov.hk/v1/transport/mtr/lrt/getSchedule?station_id=490&language=TC');
                 const data = await res.json();
                 if (data.status !== 1 || !data.platform_list) throw new Error('API 回傳異常');
 
@@ -613,7 +613,7 @@
                 syncServerTime(res.headers.get('Date'), data.system_time);
 
                 document.getElementById('lrt-banner').innerHTML =
-                    `🚇 輕鐵天水圍站 · 資料更新時間 ${data.system_time || ''}`;
+                    `🚇 輕鐵天榮站 · 資料更新時間 ${data.system_time || ''}`;
 
                 const list = document.getElementById('lrt-list');
                 list.innerHTML = data.platform_list.map(pf => {
